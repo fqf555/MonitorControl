@@ -18,3 +18,9 @@
 All six check scripts passed on 2026-11-09. The arm64 Release build succeeded with the existing Developer ID identity, and `codesign --verify --deep --strict` passed. No release was published or installed as part of this change.
 
 The friend's original brightness failure was not reproduced on physical hardware. Computer Use exposed only MonitorControl's gamma helper window and timed out when accessing SystemUIServer, so live menu inspection and physical-key verification remain unverified. The separate report of stale menu sliders is not yet narrowed down to open-menu repainting versus an incorrect control target; explicit invalidation addresses repainting, but is not proof that the friend's reported cause is resolved. A Dell DDC volume slider intentionally represents the Dell, not unrelated Mac speakers or headphones.
+
+## Local installation and owner visual confirmation
+
+On 2026-11-09, the owner reported continued overlap in the running app. Inspection showed that `/Applications/MonitorControl.app` still contained the earlier binary. The signed Release build from commit `b17aa13` was then installed and launched. The installed executable's SHA-256 matched the built executable (`5d4a7c39bd2cf91d7a47bc37791a9e3002cc42de0c3d9e8a2ce65f205857df45`), and strict signature verification passed.
+
+The owner visually inspected the installed menu and explicitly confirmed that the overlap was fixed. This is owner-confirmed visual verification, not an agent screenshot verification. The popup dismisses when switching to ChatGPT, and the computer-use tool continued to expose only the gamma helper window. The earlier geometry checks and isolated render were insufficient substitutes for checking the installed menu. No additional source fix or public release was required for this installation follow-up.
