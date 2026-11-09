@@ -79,6 +79,9 @@ final class ModernHUD {
 }
 
 private final class HUDView: NSView {
+  private let track = NSView()
+  private let fill = NSView()
+
   init(title: String, symbol: String, level: Double, unavailable: Bool) {
     super.init(frame: .zero)
     let label = NSTextField(labelWithString: title)
@@ -95,15 +98,11 @@ private final class HUDView: NSView {
     value.alignment = .right
     value.translatesAutoresizingMaskIntoConstraints = false
     self.addSubview(value)
-    let track = NSView()
     track.wantsLayer = true
-    track.layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.2).cgColor
     track.layer?.cornerRadius = 2
     track.translatesAutoresizingMaskIntoConstraints = false
     self.addSubview(track)
-    let fill = NSView()
     fill.wantsLayer = true
-    fill.layer?.backgroundColor = NSColor.labelColor.cgColor
     fill.layer?.cornerRadius = 2
     fill.translatesAutoresizingMaskIntoConstraints = false
     track.addSubview(fill)
@@ -127,8 +126,27 @@ private final class HUDView: NSView {
     ])
     self.setAccessibilityElement(true)
     self.setAccessibilityLabel("\(title), \(unavailable ? NSLocalizedString("Unavailable", comment: "HUD unavailable control") : value.stringValue)")
+    self.updateBarColors()
   }
 
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    self.updateBarColors()
+  }
+
+  override func viewDidChangeEffectiveAppearance() {
+    super.viewDidChangeEffectiveAppearance()
+    self.updateBarColors()
+  }
+
+  private func updateBarColors() {
+    // CALayer stores a fixed CGColor, not a dynamic NSColor. Resolve after the
+    // HUD inherits its window's appearance, and refresh when that changes.
+    let isDark = self.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    let foreground: NSColor = isDark ? .white : .black
+    self.fill.layer?.backgroundColor = foreground.cgColor
+    self.track.layer?.backgroundColor = foreground.withAlphaComponent(0.2).cgColor
+  }
 }
