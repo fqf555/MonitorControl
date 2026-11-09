@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AA0000000000000000000001 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000003 /* AppIcon.icon */; };
+		AA0000000000000000000002 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000003 /* AppIcon.icon */; };
 		28D1DDF2227FBE71004CB494 /* NSScreen+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D1DDF1227FBE71004CB494 /* NSScreen+Extension.swift */; };
 		28D1DDF3227FC8C6004CB494 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 56754EB01D9A4016007BCDC5 /* Assets.xcassets */; };
 		56754EAF1D9A4016007BCDC5 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56754EAE1D9A4016007BCDC5 /* main.swift */; };
@@ -75,6 +77,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AA0000000000000000000003 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		01D6471D2AF916A800321FFB /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/Main.strings; sourceTree = "<group>"; };
 		3FA7CC692A9525B4AD4ADF52 /* fa */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fa; path = fa.lproj/Main.strings; sourceTree = "<group>"; };
 		01D6471E2AF916A800321FFB /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/InternetAccessPolicy.strings; sourceTree = "<group>"; };
@@ -260,6 +263,7 @@
 				6CF93A782707981300BA219D /* MonitorControlDebug.entitlements */,
 				8C1741842707B91100E88D53 /* InternetAccessPolicy.plist */,
 				F01B0686228221B6008E64DB /* Info.plist */,
+				AA0000000000000000000003 /* AppIcon.icon */,
 				56754EB01D9A4016007BCDC5 /* Assets.xcassets */,
 				56754EAE1D9A4016007BCDC5 /* main.swift */,
 				6C6C34F423DB25BF00C0E9CB /* Model */,
@@ -498,6 +502,7 @@
 			files = (
 				AAB2F642273ED0C7004AB5A4 /* .github in Resources */,
 				AAB2F63E273ED0AD004AB5A4 /* .swiftformat in Resources */,
+				AA0000000000000000000001 /* AppIcon.icon in Resources */,
 				56754EB11D9A4016007BCDC5 /* Assets.xcassets in Resources */,
 				6CDA0FCF26485A8300F52125 /* Main.storyboard in Resources */,
 				AAB2F640273ED0B8004AB5A4 /* .bartycrouch.toml in Resources */,
@@ -516,6 +521,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA0000000000000000000002 /* AppIcon.icon in Resources */,
 				28D1DDF3227FC8C6004CB494 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

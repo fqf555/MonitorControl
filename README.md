@@ -119,6 +119,14 @@ git clone https://github.com/MonitorControl/MonitorControl.git
 - If you want to clone one of the branches, add `--single-branch --branch [branchname]` after the `clone` option.
 - You're all set! Now open the `MonitorControl.xcodeproj` with Xcode! The dependencies will automatically get downloaded once you open the project. If they don't: `File > Packages > Resolve Package Versions`
 
+### App icon development
+
+The app and login helper compile `MonitorControl/AppIcon.icon` with the asset catalog. This Icon Composer document supplies an explicit modern macOS icon instead of relying on the system to wrap the legacy transparent icon in a gray tile. Building it requires Xcode 26 or newer. The existing `AppIcon.appiconset` remains available for compatibility.
+
+The modern icon reuses the original 1024-pixel artwork without changing its pixels. Its 1.25 scale removes the artwork's built-in outer padding before the system applies its icon mask. Keep the document named `AppIcon.icon`, matching `ASSETCATALOG_COMPILER_APPICON_NAME`, and include it in both targets. When changing the artwork, update its copy in `AppIcon.icon/Assets` too.
+
+Validate the compiled `Assets.car` contains `AppIcon` entries of type `IconImageStack`, check the installed app's icon, and keep the same signing identity between local installations to preserve macOS permission grants. Icon appearance on another Mac still needs verification there.
+
 ### Third party dependencies
 
 - [MediaKeyTap](https://github.com/MonitorControl/MediaKeyTap)
