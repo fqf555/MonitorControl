@@ -10,6 +10,7 @@ release_repo='fqf555/MonitorControl'
 mkdir -p dist
 xcrun notarytool history --keychain-profile "$release_profile" --output-format json > /dev/null
 Tests/check-held-adjustment.sh
+Tests/check-system-volume.sh
 Tests/check-modern-hud.sh
 xcodebuild -project MonitorControl.xcodeproj -scheme MonitorControl -configuration Release \
   -destination 'platform=macOS,arch=arm64' -derivedDataPath "$release_derived" \

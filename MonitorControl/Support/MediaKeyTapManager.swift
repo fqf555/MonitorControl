@@ -4,10 +4,14 @@ import AudioToolbox
 import Cocoa
 import Foundation
 import MediaKeyTap
+import SimplyCoreAudio
 import os.log
 
 class MediaKeyTapManager: MediaKeyTapDelegate {
   private let heldAdjustment = HeldAdjustment<MediaKey>()
+  private let systemVolume = SystemVolumeController()
+  private var volumeRoute = VolumeKeyRoute.display
+  private var systemVolumeOutput: AudioDevice?
 
   var mediaKeyTap: MediaKeyTap?
   var keyRepeatTimers: [MediaKey: Timer] = [:]
@@ -89,6 +93,11 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
   }
 
   private func sendDisplayCommandVolumeMute(mediaKey: MediaKey, isRepeat: Bool, isSmallIncrement: Bool, isPressed: Bool, amount: Float? = nil) {
+    guard [.volumeUp, .volumeDown, .mute].contains(mediaKey), app.sleepID == 0, app.reconfigureID == 0 else { return }
+    if self.volumeRoute == .system {
+      self.sendSystemVolumeCommand(mediaKey: mediaKey, isRepeat: isRepeat, fine: isSmallIncrement, isPressed: isPressed, amount: amount)
+      return
+    }
     guard [.volumeUp, .volumeDown, .mute].contains(mediaKey), app.sleepID == 0, app.reconfigureID == 0, let affectedDisplays = DisplayManager.shared.getAffectedDisplays(isBrightness: false, isVolume: true) else {
       return
     }
@@ -117,6 +126,23 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
       default: continue
       }
     }
+  }
+
+  private func sendSystemVolumeCommand(mediaKey: MediaKey, isRepeat: Bool, fine: Bool, isPressed: Bool, amount: Float?) {
+    guard let output = self.systemVolumeOutput, output.id == app.coreAudio.defaultOutputDevice?.id else {
+      // Never carry a held adjustment across an output-device change.
+      self.heldAdjustment.stop()
+      return
+    }
+    guard isPressed else {
+      if mediaKey != .mute, !output.outputMuted, (output.outputVolume ?? 0) > 0 { app.playVolumeChangedSound() }
+      return
+    }
+    if mediaKey == .mute, isRepeat { return }
+    let level = mediaKey == .mute
+      ? self.systemVolume.toggleMute(output)
+      : self.systemVolume.adjust(output, isUp: mediaKey == .volumeUp, fine: fine, amount: amount)
+    OSDUtils.showSystemVolume(name: output.name, value: level ?? output.outputVolume ?? 0, unavailable: level == nil)
   }
 
   private func sendDisplayCommandBrightnessContrast(mediaKey: MediaKey, isRepeat _: Bool, isSmallIncrement: Bool, isPressed: Bool, isContrast: Bool = false, amount: Float? = nil) {
@@ -183,18 +209,21 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
       let keysToDelete: [MediaKey] = [.brightnessUp, .brightnessDown]
       keys.removeAll { keysToDelete.contains($0) }
     }
-    // Remove volume related keys if audio device is controllable
+    // Preserve upstream's target selection, but handle native outputs ourselves
+    // so standard volume keys also get continuous adjustment and our HUD.
+    self.systemVolumeOutput = nil
+    self.volumeRoute = .display
     if let defaultAudioDevice = app.coreAudio.defaultOutputDevice {
-      let keysToDelete: [MediaKey] = [.volumeUp, .volumeDown, .mute]
-      if prefs.integer(forKey: PrefKey.multiKeyboardVolume.rawValue) == MultiKeyboardVolume.audioDeviceNameMatching.rawValue {
-        if DisplayManager.shared.updateAudioControlTargetDisplays(deviceName: defaultAudioDevice.name) == 0 {
-          keys.removeAll { keysToDelete.contains($0) }
-        }
-      } else if defaultAudioDevice.canSetVirtualMainVolume(scope: .output) == true {
-        keys.removeAll { keysToDelete.contains($0) }
-      }
+      let matchByName = prefs.integer(forKey: PrefKey.multiKeyboardVolume.rawValue) == MultiKeyboardVolume.audioDeviceNameMatching.rawValue
+      let hasMatchingDisplay = matchByName && DisplayManager.shared.updateAudioControlTargetDisplays(deviceName: defaultAudioDevice.name) > 0
+      self.volumeRoute = VolumeKeyRoute.select(canControlSystemOutput: defaultAudioDevice.canSetVirtualMainVolume(scope: .output), matchByName: matchByName, hasMatchingDisplay: hasMatchingDisplay)
+      if self.volumeRoute == .system { self.systemVolumeOutput = defaultAudioDevice }
+    }
+    if self.volumeRoute == .passthrough {
+      keys.removeAll { [.volumeUp, .volumeDown, .mute].contains($0) }
     }
     self.mediaKeyTap?.stop()
+    self.mediaKeyTap = nil
     // returning an empty array listens for all mediakeys in MediaKeyTap
     if keys.count > 0 {
       self.mediaKeyTap = MediaKeyTap(delegate: self, on: KeyPressMode.keyDownAndUp, for: keys, observeBuiltIn: true)
@@ -236,4 +265,13 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
     os_log("Reading Accessibility privileges - Current access status %{public}@", type: .info, String(status))
     return status
   }
+}
+
+extension AudioDevice: SystemVolumeOutput {
+  var volumeOutputID: String { self.uid ?? String(self.id) }
+  var outputVolume: Float? { self.virtualMainVolume(scope: .output) }
+  var outputMuted: Bool { self.isMainChannelMuted(scope: .output) ?? false }
+  var supportsOutputMute: Bool { self.canMute(channel: 0, scope: .output) }
+  func writeOutputVolume(_ value: Float) -> Bool { self.setVirtualMainVolume(value, scope: .output) }
+  func writeOutputMute(_ muted: Bool) -> Bool { self.setMute(muted, channel: 0, scope: .output) }
 }

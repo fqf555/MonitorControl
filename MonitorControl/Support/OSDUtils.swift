@@ -53,6 +53,18 @@ class OSDUtils: NSObject {
     }
   }
 
+  static func showSystemVolume(name: String, value: Float, unavailable: Bool = false) {
+    let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
+    let displayID = screen?.displayID ?? CGMainDisplayID()
+    if #available(macOS 26.0, *) {
+      ModernHUD.shared.show(displayID: displayID, title: name,
+                            symbol: unavailable ? "nosign" : (value <= 0 ? "speaker.slash.fill" : "speaker.wave.2.fill"),
+                            level: ModernHUD.normalizedLevel(value, maximum: 1), unavailable: unavailable)
+    } else {
+      self.showOsd(displayID: displayID, command: .audioSpeakerVolume, value: value, lock: unavailable)
+    }
+  }
+
   static func showOsdMuteDisabled(displayID: CGDirectDisplayID) {
     if #available(macOS 26.0, *) {
       self.showModern(displayID: displayID, command: .audioMuteScreenBlank, value: 0, unavailable: true)

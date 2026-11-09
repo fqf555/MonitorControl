@@ -26,6 +26,8 @@ class KeyboardPrefsViewController: NSViewController, SettingsPane {
 
   @IBOutlet var keyboardBrightness: NSPopUpButton!
   @IBOutlet var keyboardVolume: NSPopUpButton!
+  @IBOutlet var volumeControlLabel: NSTextFieldCell!
+  @IBOutlet var volumeTargetHint: NSTextFieldCell!
   @IBOutlet var disableAltBrightnessKeys: NSButton!
 
   @IBOutlet var multiKeyboardBrightness: NSPopUpButton!
@@ -115,6 +117,9 @@ class KeyboardPrefsViewController: NSViewController, SettingsPane {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    self.volumeControlLabel.stringValue = NSLocalizedString("Volume control:", comment: "Keyboard volume controls")
+    self.volumeTargetHint.stringValue = NSLocalizedString("Standard keys control the current audio output. Screen selection and custom shortcuts apply to DDC displays when using monitor volume control.", comment: "Volume keyboard target explanation")
+    self.keyboardVolume.toolTip = self.volumeTargetHint.stringValue
 
     let customBrightnessUpRecorder = KeyboardShortcuts.RecorderCocoa(for: .brightnessUp)
     let customBrightnessDownRecorder = KeyboardShortcuts.RecorderCocoa(for: .brightnessDown)

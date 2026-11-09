@@ -1181,6 +1181,8 @@
                         <outlet property="customVolumeUp" destination="rFx-DX-nFb" id="DpG-Xm-lRB"/>
                         <outlet property="disableAltBrightnessKeys" destination="EJp-ld-K4l" id="WzJ-1Q-YT4"/>
                         <outlet property="keyboardBrightness" destination="2NF-gh-JBU" id="3Cw-ob-T06"/>
+                        <outlet property="volumeControlLabel" destination="qoh-Gn-f11" id="MCV-label-001"/>
+                        <outlet property="volumeTargetHint" destination="uF5-a9-Ngz" id="MCV-hint-001"/>
                         <outlet property="keyboardVolume" destination="9oZ-JM-bxD" id="IJ6-6m-q0x"/>
                         <outlet property="multiKeyboardBrightness" destination="led-AW-u5j" id="14B-uk-v7Z"/>
                         <outlet property="multiKeyboardVolume" destination="0cl-gg-oET" id="sNi-A6-f0Q"/>
