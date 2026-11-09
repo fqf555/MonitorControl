@@ -77,6 +77,7 @@ class KeyboardShortcutsManager {
   }
 
   func engage(_ shortcut: KeyboardShortcuts.Name) {
+    os_log("Shortcut received: %{public}@; sleep=%d reconfigure=%d", type: .info, shortcut.rawValue, app.sleepID, app.reconfigureID)
     guard self.isEnabled(shortcut) else {
       return
     }
@@ -199,6 +200,7 @@ class KeyboardShortcutsManager {
       self.disengage()
       return
     }
+    os_log("Volume targets: %{public}@", type: .info, affectedDisplays.map { $0.name }.joined(separator: ", "))
     var wasNotIsPressedVolumeSentAlready = false
     for display in affectedDisplays where !display.readPrefAsBool(key: .isDisabled) {
       if let display = display as? OtherDisplay {

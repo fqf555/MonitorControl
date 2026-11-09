@@ -4,6 +4,7 @@
 
 import AppKit
 import Carbon
+import os.log
 
 private func shortcutsEventHandler(eventHandlerCall _: EventHandlerCallRef?, event: EventRef?, userData _: UnsafeMutableRawPointer?) -> OSStatus {
   KeyboardShortcuts.handleEvent(event)
@@ -255,6 +256,7 @@ enum KeyboardShortcuts {
       &eventHotKey
     )
 
+    os_log("Shortcut registration key=%d modifiers=%d status=%d", type: .info, shortcut.carbonKeyCode, shortcut.carbonModifiers, error)
     guard error == noErr, let eventHotKey else {
       return
     }
