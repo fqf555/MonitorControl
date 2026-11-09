@@ -121,6 +121,8 @@ class Display: Equatable {
       os_log("Pushing brightness stopped for Display %{public}@ because of sleep or reconfiguration", type: .info, String(self.identifier))
       return false
     }
+    guard to.isFinite else { return false }
+    let previousTransient = self.smoothBrightnessTransient
     if slow {
       self.smoothBrightnessSlow = true
     }
@@ -151,7 +153,13 @@ class Display: Equatable {
       } else {
         self.smoothBrightnessTransient += min((brightness - self.smoothBrightnessTransient) / stepDivider, 1 / 100)
       }
-      _ = self.setDirectBrightness(self.smoothBrightnessTransient, transient: true)
+      guard self.setDirectBrightness(self.smoothBrightnessTransient, transient: true) else {
+        self.smoothBrightnessTransient = previousTransient
+        self.savePref(previousTransient, for: .brightness)
+        self.brightnessSyncSourceValue = previousTransient
+        self.smoothBrightnessRunning = false
+        return false
+      }
       if !dontPushAgain {
         self.smoothBrightnessRunning = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
@@ -160,7 +168,13 @@ class Display: Equatable {
       }
     } else {
       os_log("No more need to push brightness for Display  %{public}@ (setting one final time)", type: .info, String(self.identifier))
-      _ = self.setDirectBrightness(self.smoothBrightnessTransient, transient: true)
+      guard self.setDirectBrightness(self.smoothBrightnessTransient, transient: true) else {
+        self.smoothBrightnessTransient = previousTransient
+        self.savePref(previousTransient, for: .brightness)
+        self.brightnessSyncSourceValue = previousTransient
+        self.smoothBrightnessRunning = false
+        return false
+      }
       self.smoothBrightnessRunning = false
     }
     self.swBrightnessSemaphore.signal()

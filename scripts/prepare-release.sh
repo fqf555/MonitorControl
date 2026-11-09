@@ -9,6 +9,8 @@ release_account='fqf555.MonitorControl'
 release_repo='fqf555/MonitorControl'
 mkdir -p dist
 xcrun notarytool history --keychain-profile "$release_profile" --output-format json > /dev/null
+Tests/check-brightness.sh
+Tests/check-sliders.sh
 Tests/check-held-adjustment.sh
 Tests/check-system-volume.sh
 Tests/check-modern-hud.sh

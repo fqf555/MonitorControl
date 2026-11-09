@@ -25,7 +25,10 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
     let isCommand = modifiers?.isSuperset(of: NSEvent.ModifierFlags([.command])) ?? false
     let isOption = modifiers?.isSuperset(of: NSEvent.ModifierFlags([.option])) ?? false
     let isShift = modifiers?.isSuperset(of: NSEvent.ModifierFlags([.shift])) ?? false
-    if isPressed, isCommand, !isControl, mediaKey == .brightnessDown, DisplayManager.engageMirror() {
+    if MirrorShortcut.handle(isBrightnessDown: mediaKey == .brightnessDown, command: isCommand, control: isControl, pressed: isPressed, repeating: isRepeat, available: app.sleepID == 0 && app.reconfigureID == 0, toggle: {
+      self.heldAdjustment.stop()
+      _ = DisplayManager.engageMirror()
+    }) {
       return
     }
     guard app.sleepID == 0, app.reconfigureID == 0 else {

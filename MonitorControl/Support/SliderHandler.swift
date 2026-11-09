@@ -218,9 +218,10 @@ class SliderHandler {
     slider.setNumOfCustomTickmarks(prefs.bool(forKey: PrefKey.showTickMarks.rawValue) ? 5 : 0)
     self.slider = slider
     if !DEBUG_MACOS10, #available(macOS 11.0, *) {
-      slider.frame.size.width = 180
-      slider.frame.origin = NSPoint(x: 15, y: 5)
-      let view = NSView(frame: NSRect(x: 0, y: 0, width: slider.frame.width + 30 + (showPercent ? 38 : 0), height: slider.frame.height + 14))
+      // Reserve a separate icon column; never draw symbols over the track.
+      slider.frame.size.width = 157
+      slider.frame.origin = NSPoint(x: 38, y: 5)
+      let view = NSView(frame: NSRect(x: 0, y: 0, width: 210 + (showPercent ? 38 : 0), height: slider.frame.height + 14))
       view.frame.origin = NSPoint(x: 12, y: 0)
       var iconName = "circle.dashed"
       switch command {
@@ -231,14 +232,14 @@ class SliderHandler {
       }
       let icon = SliderHandler.ClickThroughImageView()
       icon.image = NSImage(systemSymbolName: iconName, accessibilityDescription: title)
-      icon.contentTintColor = NSColor.black.withAlphaComponent(0.6)
-      icon.frame = NSRect(x: view.frame.origin.x + 6.5, y: view.frame.origin.y + 13, width: 15, height: 15)
+      icon.contentTintColor = .secondaryLabelColor
+      icon.frame = NSRect(x: 15, y: slider.frame.midY - 7.5, width: 15, height: 15)
       icon.imageAlignment = .alignCenter
       view.addSubview(slider)
       view.addSubview(icon)
       self.icon = icon
       if showPercent {
-        let percentageBox = NSTextField(frame: NSRect(x: 15 + slider.frame.size.width - 2, y: 17, width: 40, height: 12))
+        let percentageBox = NSTextField(frame: NSRect(x: slider.frame.maxX + 2, y: slider.frame.midY - 6, width: 40, height: 12))
         self.setupPercentageBox(percentageBox)
         self.percentageBox = percentageBox
         view.addSubview(percentageBox)
@@ -270,7 +271,7 @@ class SliderHandler {
       self.setValue(value, displayID: otherDisplay.identifier)
     } else if let appleDisplay = display as? AppleDisplay {
       if self.command == .brightness {
-        self.setValue(appleDisplay.getAppleBrightness(), displayID: appleDisplay.identifier)
+        self.setValue(appleDisplay.getAppleBrightness() ?? appleDisplay.getBrightness(), displayID: appleDisplay.identifier)
       }
     }
   }
@@ -378,6 +379,8 @@ class SliderHandler {
       } else {
         slider.setDisplayHighlightItems(false)
       }
+      // Highlight state is custom cell data, so invalidate after all updates.
+      slider.needsDisplay = true
       if self.percentageBox == self.percentageBox {
         self.percentageBox?.stringValue = "\(String(format: "%.0f%%", Double(value) * 100))"
       }

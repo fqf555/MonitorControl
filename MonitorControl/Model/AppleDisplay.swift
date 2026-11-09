@@ -1,5 +1,6 @@
 //  Copyright © MonitorControl. @JoniVR, @theOneyouseek, @waydabber and others
 
+import CoreGraphics
 import Foundation
 import os.log
 
@@ -11,21 +12,23 @@ class AppleDisplay: Display {
     super.init(identifier, name: name, vendorNumber: vendorNumber, modelNumber: modelNumber, serialNumber: serialNumber, isVirtual: isVirtual, isDummy: isDummy)
   }
 
-  func getAppleBrightness() -> Float {
+  func getAppleBrightness() -> Float? {
     guard !self.isDummy else {
       return 1
     }
-    var brightness: Float = 0
-    DisplayServicesGetBrightness(self.identifier, &brightness)
+    var brightness: Float = .nan
+    guard DisplayServicesGetBrightness(self.identifier, &brightness) == 0, brightness.isFinite, (0 ... 1).contains(brightness) else {
+      return nil
+    }
     return brightness
   }
 
-  func setAppleBrightness(value: Float) {
-    guard !self.isDummy else {
-      return
+  func setAppleBrightness(value: Float) -> Bool {
+    guard !self.isDummy, value.isFinite else {
+      return false
     }
-    _ = self.displayQueue.sync {
-      DisplayServicesSetBrightness(self.identifier, value)
+    return self.displayQueue.sync {
+      DisplayServicesSetBrightness(self.identifier, value) == 0
     }
   }
 
@@ -34,7 +37,9 @@ class AppleDisplay: Display {
       return false
     }
     let value = max(min(to, 1), 0)
-    self.setAppleBrightness(value: value)
+    guard to.isFinite, self.setAppleBrightness(value: value) else {
+      return false
+    }
     if !transient {
       self.savePref(value, for: .brightness)
       self.brightnessSyncSourceValue = value
@@ -50,7 +55,7 @@ class AppleDisplay: Display {
     if self.prefExists(for: .brightness) {
       return self.readPrefAsFloat(for: .brightness)
     } else {
-      return self.getAppleBrightness()
+      return self.getAppleBrightness() ?? self.smoothBrightnessTransient
     }
   }
 
@@ -58,7 +63,11 @@ class AppleDisplay: Display {
     guard !self.smoothBrightnessRunning else {
       return 0
     }
-    let brightness = self.getAppleBrightness()
+    guard let brightness = self.getAppleBrightness() else {
+      return 0
+    }
+    // Native slider and ambient-light changes become the next animation origin.
+    self.smoothBrightnessTransient = brightness
     let oldValue = self.brightnessSyncSourceValue
     self.savePref(brightness, for: .brightness)
     if brightness != oldValue {
