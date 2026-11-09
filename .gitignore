@@ -6,3 +6,5 @@ Carthage
 
 ### Xcode ###
 xcuserdata/
+# Local release artifacts and notarization records
+/dist/

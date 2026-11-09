@@ -26,6 +26,12 @@ Use menubar extra sliders or the keyboard, including native Apple keys!</p>
 
 ## Download
 
+### Qifeng's fork (Apple Silicon)
+
+Download the signed and notarized build from [fqf555/MonitorControl releases](https://github.com/fqf555/MonitorControl/releases/latest). Unzip it, quit any running MonitorControl, and move `MonitorControl.app` to Applications. This fork checks its own GitHub Releases appcast for future updates, not the upstream feed. The first migration from the upstream app must be installed manually. If Accessibility shows enabled but keyboard control is denied, remove the old MonitorControl entry and add the new app again because the signing identity has changed. This release requires an Apple Silicon Mac and macOS 12 or newer.
+
+### Upstream releases
+
 Go to [Releases](https://github.com/MonitorControl/MonitorControl/releases) and download the latest `.dmg`, or you can install via Homebrew:
 ```shell
 brew install --cask monitorcontrol
@@ -127,6 +133,14 @@ The app and login helper compile `MonitorControl/AppIcon.icon` with the asset ca
 The modern icon reuses the original 1024-pixel artwork without changing its pixels. Its 1.25 scale removes the artwork's built-in outer padding before the system applies its icon mask. Keep the document named `AppIcon.icon`, matching `ASSETCATALOG_COMPILER_APPICON_NAME`, and include it in both targets. When changing the artwork, update its copy in `AppIcon.icon/Assets` too.
 
 Validate the compiled `Assets.car` contains `AppIcon` entries of type `IconImageStack`, check the installed app's icon, and keep the same signing identity between local installations to preserve macOS permission grants. Icon appearance on another Mac still needs verification there.
+
+### Publishing this fork
+
+GitHub Actions remains disabled. Releases are prepared locally with `scripts/prepare-release.sh`, using the `Personal-Mac-Releases` notarization Keychain profile and Developer ID team `9L6898HMMN`. Sparkle's separate Ed25519 signing key is stored in the login Keychain under account `fqf555.MonitorControl`; only its public key belongs in the repository. Preserve that private key and the Developer ID identity for future updates.
+
+Before preparing a release, increase `MARKETING_VERSION` for both targets and `CFBundleVersion` in both Info.plists. Release builds preserve the explicit build number; Debug builds retain the existing automatic increment. The script runs checks, builds arm64, verifies signing, notarizes, staples, checks Gatekeeper acceptance, and generates a signed update archive and appcast under ignored `dist/<version>-<build>/updates`.
+
+Commit the source and create/push the matching `v<version>` tag to `origin`. Create a draft GitHub release from that tag and upload the generated ZIP, `appcast.xml`, and `SHA256SUMS` together. Publish it as the latest stable release only when all assets are ready. The stable feed URL is `https://github.com/fqf555/MonitorControl/releases/latest/download/appcast.xml`; enclosure URLs point to immutable, version-specific release assets. Do not reuse tags or overwrite published update archives. Download and verify the public artifacts and exercise Check for updates after publishing. Intel Macs must not be offered these arm64-only releases.
 
 ### Third party dependencies
 

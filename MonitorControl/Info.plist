@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>7160</string>
+	<string>7161</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
@@ -33,9 +33,9 @@
 	<key>SUEnableJavaScript</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://monitorcontrol.app/appcast2.xml</string>
+	<string>https://github.com/fqf555/MonitorControl/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>ITSTMp8AypsLawojJ+UR3tm2mN18AFoNMvXf1G3t62s=</string>
+	<string>trPeTszA4cJnQDK8EJyRO6XP4dWSPsv/TK1vbWbLM34=</string>
 	<key>UIDesignRequiresCompatibility</key>
 	<true/>
 </dict>
