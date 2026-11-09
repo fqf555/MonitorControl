@@ -1,5 +1,9 @@
 # Held-key brightness speed investigation
 
+## Resolution
+
+The owner subsequently confirmed that the friend had fine adjustment enabled. After unchecking it, the adjustment speed returned to normal. No brightness timing fix was needed.
+
 ## Observations (2026-11-09)
 
 The supplied six-second video shows the app's brightness HUD for “Color LCD”. Samples at half-second intervals are approximately 79%, 81%, 84%, 86%, 89%, 89%, 87%, 84%, 82%, 79%, 77%, and 74%. The upward and downward portions both run at roughly five percentage points per second. The recording does not show keyboard modifiers or preferences, so it cannot establish the exact configuration.
