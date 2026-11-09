@@ -7,11 +7,15 @@ import MediaKeyTap
 import os.log
 
 class MediaKeyTapManager: MediaKeyTapDelegate {
+  private let heldAdjustment = HeldAdjustment<MediaKey>()
+
   var mediaKeyTap: MediaKeyTap?
   var keyRepeatTimers: [MediaKey: Timer] = [:]
 
   func handle(mediaKey: MediaKey, event: KeyEvent?, modifiers: NSEvent.ModifierFlags?) {
     let isPressed = event?.keyPressed ?? true
+    if isPressed, mediaKey == .mute { self.heldAdjustment.stop() }
+    if !isPressed { self.heldAdjustment.stop(mediaKey) }
     let isRepeat = event?.keyRepeat ?? false
     let isControl = modifiers?.isSuperset(of: NSEvent.ModifierFlags([.control])) ?? false
     let isCommand = modifiers?.isSuperset(of: NSEvent.ModifierFlags([.command])) ?? false
@@ -34,6 +38,18 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
     if [.volumeUp, .volumeDown, .mute].contains(mediaKey), prefs.bool(forKey: PrefKey.useFineScaleVolume.rawValue) {
       isSmallIncrement = !isSmallIncrement
     }
+    if isPressed, [.brightnessUp, .brightnessDown, .volumeUp, .volumeDown].contains(mediaKey), !prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue) {
+      self.heldAdjustment.start(mediaKey) { [weak self] amount in
+        guard let self = self, app.sleepID == 0, app.reconfigureID == 0, !prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue) else { return false }
+        if isControl, !isOption, [.brightnessUp, .brightnessDown].contains(mediaKey) {
+          self.handleDirectedBrightness(isCommandModifier: isCommand, isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement, amount: amount)
+        } else {
+          self.sendDisplayCommand(mediaKey: mediaKey, isRepeat: true, isSmallIncrement: isSmallIncrement, isPressed: true, isContrast: isContrast, amount: amount)
+        }
+        return true
+      }
+      return
+    }
     if isPressed, isControl, !isOption, mediaKey == .brightnessUp || mediaKey == .brightnessDown {
       self.handleDirectedBrightness(isCommandModifier: isCommand, isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement)
       return
@@ -52,27 +68,27 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
     self.sendDisplayCommand(mediaKey: mediaKey, isRepeat: isRepeat, isSmallIncrement: isSmallIncrement, isPressed: isPressed, isContrast: isContrast)
   }
 
-  func handleDirectedBrightness(isCommandModifier: Bool, isUp: Bool, isSmallIncrement: Bool) {
+  func handleDirectedBrightness(isCommandModifier: Bool, isUp: Bool, isSmallIncrement: Bool, amount: Float? = nil) {
     if isCommandModifier {
       for otherDisplay in DisplayManager.shared.getOtherDisplays() {
-        otherDisplay.stepBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement)
+        otherDisplay.stepBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement, amount: amount)
       }
       for appleDisplay in DisplayManager.shared.getAppleDisplays() where !appleDisplay.isBuiltIn() {
-        appleDisplay.stepBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement)
+        appleDisplay.stepBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement, amount: amount)
       }
       return
     } else if let internalDisplay = DisplayManager.shared.getBuiltInDisplay() as? AppleDisplay {
-      internalDisplay.stepBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement)
+      internalDisplay.stepBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement, amount: amount)
       return
     }
   }
 
-  private func sendDisplayCommand(mediaKey: MediaKey, isRepeat: Bool, isSmallIncrement: Bool, isPressed: Bool, isContrast: Bool = false) {
-    self.sendDisplayCommandVolumeMute(mediaKey: mediaKey, isRepeat: isRepeat, isSmallIncrement: isSmallIncrement, isPressed: isPressed)
-    self.sendDisplayCommandBrightnessContrast(mediaKey: mediaKey, isRepeat: isRepeat, isSmallIncrement: isSmallIncrement, isPressed: isPressed, isContrast: isContrast)
+  private func sendDisplayCommand(mediaKey: MediaKey, isRepeat: Bool, isSmallIncrement: Bool, isPressed: Bool, isContrast: Bool = false, amount: Float? = nil) {
+    self.sendDisplayCommandVolumeMute(mediaKey: mediaKey, isRepeat: isRepeat, isSmallIncrement: isSmallIncrement, isPressed: isPressed, amount: amount)
+    self.sendDisplayCommandBrightnessContrast(mediaKey: mediaKey, isRepeat: isRepeat, isSmallIncrement: isSmallIncrement, isPressed: isPressed, isContrast: isContrast, amount: amount)
   }
 
-  private func sendDisplayCommandVolumeMute(mediaKey: MediaKey, isRepeat: Bool, isSmallIncrement: Bool, isPressed: Bool) {
+  private func sendDisplayCommandVolumeMute(mediaKey: MediaKey, isRepeat: Bool, isSmallIncrement: Bool, isPressed: Bool, amount: Float? = nil) {
     guard [.volumeUp, .volumeDown, .mute].contains(mediaKey), app.sleepID == 0, app.reconfigureID == 0, let affectedDisplays = DisplayManager.shared.getAffectedDisplays(isBrightness: false, isVolume: true) else {
       return
     }
@@ -92,7 +108,7 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
         // volume only matters for other displays
         if let display = display as? OtherDisplay {
           if isPressed {
-            display.stepVolume(isUp: mediaKey == .volumeUp, isSmallIncrement: isSmallIncrement)
+            display.stepVolume(isUp: mediaKey == .volumeUp, isSmallIncrement: isSmallIncrement, amount: amount)
           } else if !wasNotIsPressedVolumeSentAlready, !display.readPrefAsBool(key: .unavailableDDC, for: .audioSpeakerVolume) {
             app.playVolumeChangedSound()
             wasNotIsPressedVolumeSentAlready = true
@@ -103,7 +119,7 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
     }
   }
 
-  private func sendDisplayCommandBrightnessContrast(mediaKey: MediaKey, isRepeat _: Bool, isSmallIncrement: Bool, isPressed: Bool, isContrast: Bool = false) {
+  private func sendDisplayCommandBrightnessContrast(mediaKey: MediaKey, isRepeat _: Bool, isSmallIncrement: Bool, isPressed: Bool, isContrast: Bool = false, amount: Float? = nil) {
     guard [.brightnessUp, .brightnessDown].contains(mediaKey), app.sleepID == 0, app.reconfigureID == 0, isPressed, let affectedDisplays = DisplayManager.shared.getAffectedDisplays(isBrightness: true, isVolume: false) else {
       return
     }
@@ -111,21 +127,21 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
       switch mediaKey {
       case .brightnessUp:
         if isContrast, let otherDisplay = display as? OtherDisplay {
-          otherDisplay.stepContrast(isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement)
+          otherDisplay.stepContrast(isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement, amount: amount)
         } else {
           var isAnyDisplayInSwAfterBrightnessMode = false
           for display in affectedDisplays where ((display as? OtherDisplay)?.isSwBrightnessNotDefault() ?? false) && !((display as? OtherDisplay)?.isSw() ?? false) && prefs.bool(forKey: PrefKey.separateCombinedScale.rawValue) {
             isAnyDisplayInSwAfterBrightnessMode = true
           }
           if !(isAnyDisplayInSwAfterBrightnessMode && !(((display as? OtherDisplay)?.isSwBrightnessNotDefault() ?? false) && !((display as? OtherDisplay)?.isSw() ?? false))) {
-            display.stepBrightness(isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement)
+            display.stepBrightness(isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement, amount: amount)
           }
         }
       case .brightnessDown:
         if isContrast, let otherDisplay = display as? OtherDisplay {
-          otherDisplay.stepContrast(isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement)
+          otherDisplay.stepContrast(isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement, amount: amount)
         } else {
-          display.stepBrightness(isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement)
+          display.stepBrightness(isUp: mediaKey == .brightnessUp, isSmallIncrement: isSmallIncrement, amount: amount)
         }
       default: continue
       }
@@ -146,6 +162,7 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
   }
 
   func updateMediaKeyTap() {
+    self.heldAdjustment.stop()
     var keys: [MediaKey] = []
     if [KeyboardBrightness.media.rawValue, KeyboardBrightness.both.rawValue].contains(prefs.integer(forKey: PrefKey.keyboardBrightness.rawValue)) {
       keys.append(contentsOf: [.brightnessUp, .brightnessDown])

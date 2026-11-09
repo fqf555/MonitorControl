@@ -7,6 +7,8 @@ class KeyboardShortcutsManager {
   private let brightnessShortcuts: [KeyboardShortcuts.Name] = [.brightnessUp, .brightnessDown, .contrastUp, .contrastDown]
   private let volumeShortcuts: [KeyboardShortcuts.Name] = [.volumeUp, .volumeDown, .mute]
 
+  private let heldAdjustment = HeldAdjustment<KeyboardShortcuts.Name>()
+
   var initialKeyRepeat = 0.21
   var keyRepeat = 0.028
   var keyRepeatCount = 0
@@ -39,22 +41,22 @@ class KeyboardShortcutsManager {
       self.mute()
     }
     KeyboardShortcuts.onKeyUp(for: .brightnessUp) { [self] in
-      self.disengage()
+      self.release(.brightnessUp)
     }
     KeyboardShortcuts.onKeyUp(for: .brightnessDown) { [self] in
-      self.disengage()
+      self.release(.brightnessDown)
     }
     KeyboardShortcuts.onKeyUp(for: .contrastUp) { [self] in
-      self.disengage()
+      self.release(.contrastUp)
     }
     KeyboardShortcuts.onKeyUp(for: .contrastDown) { [self] in
-      self.disengage()
+      self.release(.contrastDown)
     }
     KeyboardShortcuts.onKeyUp(for: .volumeUp) { [self] in
-      self.disengage()
+      self.release(.volumeUp)
     }
     KeyboardShortcuts.onKeyUp(for: .volumeDown) { [self] in
-      self.disengage()
+      self.release(.volumeDown)
     }
     self.updateRegistrations()
   }
@@ -78,6 +80,23 @@ class KeyboardShortcutsManager {
     guard self.isEnabled(shortcut) else {
       return
     }
+    if !prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue) {
+      self.currentCommand = shortcut
+      self.heldAdjustment.start(shortcut) { [weak self] amount in
+        guard let self = self, app.sleepID == 0, app.reconfigureID == 0, self.isEnabled(shortcut), !prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue) else { return false }
+        switch shortcut {
+        case .brightnessUp: self.brightness(isUp: true, amount: amount)
+        case .brightnessDown: self.brightness(isUp: false, amount: amount)
+        case .contrastUp: self.contrast(isUp: true, amount: amount)
+        case .contrastDown: self.contrast(isUp: false, amount: amount)
+        case .volumeUp: self.volume(isUp: true, isPressed: true, amount: amount)
+        case .volumeDown: self.volume(isUp: false, isPressed: true, amount: amount)
+        default: return false
+        }
+        return true
+      }
+      return
+    }
     self.initialKeyRepeat = max(15, UserDefaults.standard.double(forKey: "InitialKeyRepeat")) * 0.014
     self.keyRepeat = max(2, UserDefaults.standard.double(forKey: "KeyRepeat")) * 0.014
     self.currentCommand = shortcut
@@ -98,7 +117,16 @@ class KeyboardShortcutsManager {
     return false
   }
 
+  private func release(_ shortcut: KeyboardShortcuts.Name) {
+    guard self.currentCommand == shortcut else { return }
+    if self.heldAdjustment.key != nil, [.volumeUp, .volumeDown].contains(shortcut) {
+      self.volume(isUp: true, isPressed: false)
+    }
+    self.disengage()
+  }
+
   func disengage() {
+    self.heldAdjustment.stop()
     self.isHold = false
     self.isFirstKeypress = false
     self.currentCommand = KeyboardShortcuts.Name.none
@@ -138,7 +166,7 @@ class KeyboardShortcutsManager {
     }
   }
 
-  func brightness(isUp: Bool) {
+  func brightness(isUp: Bool, amount: Float? = nil) {
     guard let affectedDisplays = DisplayManager.shared.getAffectedDisplays(isBrightness: true, isVolume: false), [KeyboardBrightness.custom.rawValue, KeyboardBrightness.both.rawValue].contains(prefs.integer(forKey: PrefKey.keyboardBrightness.rawValue)) else {
       self.disengage()
       return
@@ -149,24 +177,24 @@ class KeyboardShortcutsManager {
         isAnyDisplayInSwAfterBrightnessMode = true
       }
       if !(isAnyDisplayInSwAfterBrightnessMode && !(((display as? OtherDisplay)?.isSwBrightnessNotDefault() ?? false) && !((display as? OtherDisplay)?.isSw() ?? false))) {
-        display.stepBrightness(isUp: isUp, isSmallIncrement: prefs.bool(forKey: PrefKey.useFineScaleBrightness.rawValue))
+        display.stepBrightness(isUp: isUp, isSmallIncrement: prefs.bool(forKey: PrefKey.useFineScaleBrightness.rawValue), amount: amount)
       }
     }
   }
 
-  func contrast(isUp: Bool) {
+  func contrast(isUp: Bool, amount: Float? = nil) {
     guard let affectedDisplays = DisplayManager.shared.getAffectedDisplays(isBrightness: true, isVolume: false), [KeyboardBrightness.custom.rawValue, KeyboardBrightness.both.rawValue].contains(prefs.integer(forKey: PrefKey.keyboardBrightness.rawValue)) else {
       self.disengage()
       return
     }
     for display in affectedDisplays where !display.readPrefAsBool(key: .isDisabled) {
       if let otherDisplay = display as? OtherDisplay {
-        otherDisplay.stepContrast(isUp: isUp, isSmallIncrement: prefs.bool(forKey: PrefKey.useFineScaleBrightness.rawValue))
+        otherDisplay.stepContrast(isUp: isUp, isSmallIncrement: prefs.bool(forKey: PrefKey.useFineScaleBrightness.rawValue), amount: amount)
       }
     }
   }
 
-  func volume(isUp: Bool, isPressed: Bool) {
+  func volume(isUp: Bool, isPressed: Bool, amount: Float? = nil) {
     guard let affectedDisplays = DisplayManager.shared.getAffectedDisplays(isBrightness: false, isVolume: true), [KeyboardVolume.custom.rawValue, KeyboardVolume.both.rawValue].contains(prefs.integer(forKey: PrefKey.keyboardVolume.rawValue)) else {
       self.disengage()
       return
@@ -175,7 +203,7 @@ class KeyboardShortcutsManager {
     for display in affectedDisplays where !display.readPrefAsBool(key: .isDisabled) {
       if let display = display as? OtherDisplay {
         if isPressed {
-          display.stepVolume(isUp: isUp, isSmallIncrement: prefs.bool(forKey: PrefKey.useFineScaleVolume.rawValue))
+          display.stepVolume(isUp: isUp, isSmallIncrement: prefs.bool(forKey: PrefKey.useFineScaleVolume.rawValue), amount: amount)
         } else if !wasNotIsPressedVolumeSentAlready, !display.readPrefAsBool(key: .unavailableDDC, for: .audioSpeakerVolume) {
           app.playVolumeChangedSound()
           wasNotIsPressedVolumeSentAlready = true
@@ -185,6 +213,7 @@ class KeyboardShortcutsManager {
   }
 
   func mute() {
+    self.disengage()
     guard app.sleepID == 0, app.reconfigureID == 0, [KeyboardVolume.custom.rawValue, KeyboardVolume.both.rawValue].contains(prefs.integer(forKey: PrefKey.keyboardVolume.rawValue)), let affectedDisplays = DisplayManager.shared.getAffectedDisplays(isBrightness: false, isVolume: true) else {
       return
     }

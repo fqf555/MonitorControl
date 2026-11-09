@@ -85,18 +85,19 @@ class Display: Equatable {
     self.brightnessSyncSourceValue = self.getBrightness()
   }
 
-  func calcNewBrightness(isUp: Bool, isSmallIncrement: Bool) -> Float {
+  func calcNewBrightness(isUp: Bool, isSmallIncrement: Bool, amount: Float? = nil) -> Float {
+    if let amount = amount { return HeldAdjustment<Int>.adjusted(self.getBrightness(), isUp: isUp, amount: amount, fine: isSmallIncrement) }
     let step: Float = (isUp ? 1 : -1) / (isSmallIncrement ? 64.0 : 16.0)
     let delta = step / 4
     return min(max(0, ceil((self.getBrightness() + delta) / step) * step), 1)
   }
 
-  func stepBrightness(isUp: Bool, isSmallIncrement: Bool) {
+  func stepBrightness(isUp: Bool, isSmallIncrement: Bool, amount: Float? = nil) {
     guard !self.readPrefAsBool(key: .unavailableDDC, for: .brightness) else {
       return
     }
-    let value = self.calcNewBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement)
-    if self.setBrightness(value) {
+    let value = self.calcNewBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement, amount: amount)
+    if (amount != nil ? self.setDirectBrightness(value) : self.setBrightness(value)) {
       OSDUtils.showOsd(displayID: self.identifier, command: .brightness, value: value * 64, maxValue: 64)
       if let slider = self.sliderHandler[.brightness] {
         slider.setValue(value, displayID: self.identifier)

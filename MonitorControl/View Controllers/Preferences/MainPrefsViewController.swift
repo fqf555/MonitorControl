@@ -58,6 +58,8 @@ class MainPrefsViewController: NSViewController, SettingsPane {
     self.automaticUpdateCheck.state = prefs.bool(forKey: PrefKey.SUEnableAutomaticChecks.rawValue) ? .on : .off
     self.combinedBrightness.state = prefs.bool(forKey: PrefKey.disableCombinedBrightness.rawValue) ? .off : .on
     self.allowZeroSwBrightness.state = prefs.bool(forKey: PrefKey.allowZeroSwBrightness.rawValue) ? .on : .off
+    self.enableSmooth.title = NSLocalizedString("Smooth brightness and continuous key adjustment", comment: "Smooth brightness and held-key volume/brightness setting")
+    self.enableSmooth.toolTip = NSLocalizedString("Hold brightness, contrast, or volume keys to adjust continuously; release to stop. Fine control slows adjustment. Monitor hardware determines the smallest physical step.", comment: "Continuous keyboard adjustment explanation")
     self.enableSmooth.state = prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue) ? .off : .on
     self.enableBrightnessSync.state = prefs.bool(forKey: PrefKey.enableBrightnessSync.rawValue) ? .on : .off
     self.startupAction.selectItem(withTag: prefs.integer(forKey: PrefKey.startupAction.rawValue))
@@ -121,6 +123,8 @@ class MainPrefsViewController: NSViewController, SettingsPane {
   }
 
   @IBAction func enableSmooth(_ sender: NSButton) {
+    app.keyboardShortcuts.disengage()
+    app.mediaKeyTap.updateMediaKeyTap()
     switch sender.state {
     case .on:
       prefs.set(false, forKey: PrefKey.disableSmoothBrightness.rawValue)

@@ -37,6 +37,7 @@ brew install --cask monitorcontrol
 - Shows native OSD for brightness and volume.
 - Supports multiple protocols to adjust brightness: DDC for external displays (brightness, contrast, volume), native Apple protocol for Apple and built-in displays, Gamma table control for software dimming, shade control for AirPlay, Sidecar and Display Link devices and other virtual screens.
 - Supports smooth brightness transitions.
+- With smooth adjustment enabled, holding media keys or custom brightness, contrast, and volume shortcuts adjusts continuously according to elapsed time; releasing stops the adjustment. A tap changes the logical level by 0.5%, and holding changes it by 20 percentage points per second. Fine control reduces that speed and tap size to one quarter. Disabling smooth adjustment retains traditional keyboard steps. DDC monitors still quantize these values to the integer levels supported by their hardware; this cannot provide unlimited physical precision. A 30-second safeguard stops adjustment if a key-release event is lost.
 - Seamlessly combined hardware and software dimming extends dimming beyond the minimum brightness available on your display.
 - Synchronize brightness from built-in and Apple screens - replicate Ambient light sensor and touch bar induced changes to a non-Apple external display!
 - Sync up all your displays using a single slider or keyboard shortcuts.

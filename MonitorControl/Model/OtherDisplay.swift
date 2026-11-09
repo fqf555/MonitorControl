@@ -165,14 +165,14 @@ class OtherDisplay: Display {
     (command == .audioSpeakerVolume && self.readPrefAsBool(key: .enableMuteUnmute) && self.readPrefAsInt(for: .audioMuteScreenBlank) == 1) ? 0 : self.readPrefAsFloat(for: command)
   }
 
-  func stepVolume(isUp: Bool, isSmallIncrement: Bool) {
+  func stepVolume(isUp: Bool, isSmallIncrement: Bool, amount: Float? = nil) {
     guard !self.readPrefAsBool(key: .unavailableDDC, for: .audioSpeakerVolume) else {
       OSDUtils.showOsdVolumeDisabled(displayID: self.identifier)
       return
     }
     let currentValue = self.readPrefAsFloat(for: .audioSpeakerVolume)
     var muteValue: Int?
-    let volumeOSDValue = self.calcNewValue(currentValue: currentValue, isUp: isUp, isSmallIncrement: isSmallIncrement)
+    let volumeOSDValue = self.calcNewValue(currentValue: currentValue, isUp: isUp, isSmallIncrement: isSmallIncrement, amount: amount)
     if self.readPrefAsInt(for: .audioMuteScreenBlank) == 1, volumeOSDValue > 0 {
       muteValue = 2
     } else if self.readPrefAsInt(for: .audioMuteScreenBlank) != 1, volumeOSDValue == 0 {
@@ -199,12 +199,12 @@ class OtherDisplay: Display {
     }
   }
 
-  func stepContrast(isUp: Bool, isSmallIncrement: Bool) {
+  func stepContrast(isUp: Bool, isSmallIncrement: Bool, amount: Float? = nil) {
     guard !self.readPrefAsBool(key: .unavailableDDC, for: .contrast), !self.isSw() else {
       return
     }
     let currentValue = self.readPrefAsFloat(for: .contrast)
-    let contrastOSDValue = self.calcNewValue(currentValue: currentValue, isUp: isUp, isSmallIncrement: isSmallIncrement)
+    let contrastOSDValue = self.calcNewValue(currentValue: currentValue, isUp: isUp, isSmallIncrement: isSmallIncrement, amount: amount)
     let isAlreadySet = contrastOSDValue == self.readPrefAsFloat(for: .contrast)
     if !isAlreadySet {
       self.writeDDCValues(command: .contrast, value: self.convValueToDDC(for: .contrast, from: contrastOSDValue))
@@ -297,9 +297,9 @@ class OtherDisplay: Display {
     }
   }
 
-  override func stepBrightness(isUp: Bool, isSmallIncrement: Bool) {
+  override func stepBrightness(isUp: Bool, isSmallIncrement: Bool, amount: Float? = nil) {
     if self.isSw() {
-      super.stepBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement)
+      super.stepBrightness(isUp: isUp, isSmallIncrement: isSmallIncrement, amount: amount)
       return
     }
     guard !self.readPrefAsBool(key: .unavailableDDC, for: .brightness) else {
@@ -308,16 +308,16 @@ class OtherDisplay: Display {
     let currentValue = self.readPrefAsFloat(for: .brightness)
     var osdValue: Float = 1
     if !prefs.bool(forKey: PrefKey.disableCombinedBrightness.rawValue), prefs.bool(forKey: PrefKey.separateCombinedScale.rawValue) {
-      osdValue = self.calcNewValue(currentValue: currentValue, isUp: isUp, isSmallIncrement: isSmallIncrement, half: true)
-      _ = self.setBrightness(osdValue)
+      osdValue = self.calcNewValue(currentValue: currentValue, isUp: isUp, isSmallIncrement: isSmallIncrement, half: true, amount: amount)
+      _ = amount != nil ? self.setDirectBrightness(osdValue) : self.setBrightness(osdValue)
       if osdValue > self.combinedBrightnessSwitchingValue() {
         OSDUtils.showOsd(displayID: self.identifier, command: .brightness, value: osdValue - self.combinedBrightnessSwitchingValue(), maxValue: self.combinedBrightnessSwitchingValue(), roundChiclet: !isSmallIncrement)
       } else {
         self.doSwAfterOsdAnimation()
       }
     } else {
-      osdValue = self.calcNewValue(currentValue: currentValue, isUp: isUp, isSmallIncrement: isSmallIncrement)
-      _ = self.setBrightness(osdValue)
+      osdValue = self.calcNewValue(currentValue: currentValue, isUp: isUp, isSmallIncrement: isSmallIncrement, amount: amount)
+      _ = amount != nil ? self.setDirectBrightness(osdValue) : self.setBrightness(osdValue)
       OSDUtils.showOsd(displayID: self.identifier, command: .brightness, value: osdValue, roundChiclet: !isSmallIncrement)
     }
     if let slider = self.sliderHandler[.brightness] {
@@ -444,7 +444,8 @@ class OtherDisplay: Display {
     return values
   }
 
-  func calcNewValue(currentValue: Float, isUp: Bool, isSmallIncrement: Bool, half: Bool = false) -> Float {
+  func calcNewValue(currentValue: Float, isUp: Bool, isSmallIncrement: Bool, half: Bool = false, amount: Float? = nil) -> Float {
+    if let amount = amount { return HeldAdjustment<Int>.adjusted(currentValue, isUp: isUp, amount: amount * (half ? 0.5 : 1), fine: isSmallIncrement) }
     let nextValue: Float
     if isSmallIncrement {
       nextValue = currentValue + (isUp ? 0.01 : -0.01)
