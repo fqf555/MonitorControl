@@ -23,6 +23,10 @@ class OSDUtils: NSObject {
   }
 
   static func showOsd(displayID: CGDirectDisplayID, command: Command, value: Float, maxValue: Float = 1, roundChiclet: Bool = false, lock: Bool = false) {
+    if #available(macOS 26.0, *) {
+      self.showModern(displayID: displayID, command: command, value: value, maximum: maxValue, unavailable: lock)
+      return
+    }
     self.withOSD { manager in
       let osdImage = self.getOSDImageByCommand(command: command, value: value)
       let filledChiclets: Int
@@ -40,30 +44,61 @@ class OSDUtils: NSObject {
   }
 
   static func showOsdVolumeDisabled(displayID: CGDirectDisplayID) {
+    if #available(macOS 26.0, *) {
+      self.showModern(displayID: displayID, command: .audioMuteScreenBlank, value: 0, unavailable: true)
+      return
+    }
     self.withOSD { manager in
       manager.showImage(22, onDisplayID: displayID, priority: 0x1F4, msecUntilFade: 1000)
     }
   }
 
   static func showOsdMuteDisabled(displayID: CGDirectDisplayID) {
+    if #available(macOS 26.0, *) {
+      self.showModern(displayID: displayID, command: .audioMuteScreenBlank, value: 0, unavailable: true)
+      return
+    }
     self.withOSD { manager in
       manager.showImage(21, onDisplayID: displayID, priority: 0x1F4, msecUntilFade: 1000)
     }
   }
 
   static func popEmptyOsd(displayID: CGDirectDisplayID, command: Command) {
+    if #available(macOS 26.0, *) {
+      self.showModern(displayID: displayID, command: command, value: 0)
+      return
+    }
     self.withOSD { manager in
       let osdImage = self.getOSDImageByCommand(command: command)
       manager.showImage(osdImage.rawValue, onDisplayID: displayID, priority: 0x1F4, msecUntilFade: 0)
     }
   }
 
-  private static func withOSD(_ show: @escaping (OSDUIHelperProtocol) -> Void) {
-    if #available(macOS 26.0, *), ProcessInfo.processInfo.operatingSystemVersion.majorVersion <= 27 {
-      TraditionalOSD.show(show)
-    } else if let manager = OSDManager.sharedManager() as? OSDManager {
-      show(manager)
+  private static func showModern(displayID: CGDirectDisplayID, command: Command, value: Float, maximum: Float = 1, unavailable: Bool = false) {
+    guard Thread.isMainThread else {
+      DispatchQueue.main.async { self.showModern(displayID: displayID, command: command, value: value, maximum: maximum, unavailable: unavailable) }
+      return
     }
+    let name = DisplayManager.shared.displays.first { $0.identifier == displayID }?.name ?? "MonitorControl"
+    let label: String
+    let symbol: String
+    switch command {
+    case .audioSpeakerVolume, .audioMuteScreenBlank:
+      label = NSLocalizedString("Volume", comment: "HUD volume title")
+      symbol = unavailable || value <= 0 || command == .audioMuteScreenBlank ? "speaker.slash.fill" : "speaker.wave.2.fill"
+    case .contrast:
+      label = NSLocalizedString("Contrast", comment: "HUD contrast title")
+      symbol = "circle.lefthalf.filled"
+    default:
+      label = NSLocalizedString("Brightness", comment: "HUD brightness title")
+      symbol = "sun.max.fill"
+    }
+    ModernHUD.shared.show(displayID: displayID, title: "\(name) · \(label)", symbol: unavailable ? "nosign" : symbol,
+                          level: ModernHUD.normalizedLevel(value, maximum: maximum), unavailable: unavailable)
+  }
+
+  private static func withOSD(_ show: @escaping (OSDUIHelperProtocol) -> Void) {
+    if let manager = OSDManager.sharedManager() as? OSDManager { show(manager) }
   }
 
   static let chicletCount: Float = 16
@@ -78,69 +113,5 @@ class OSDUtils: NSObject {
 
   static func getDistance(fromNearestChiclet chiclet: Float) -> Float {
     abs(chiclet.rounded(.towardZero) - chiclet)
-  }
-}
-
-@available(macOS 26.0, *)
-private enum TraditionalOSD {
-  private static var connection: NSXPCConnection?
-
-  static func show(_ show: @escaping (OSDUIHelperProtocol) -> Void) {
-    guard Thread.isMainThread else {
-      DispatchQueue.main.async {
-        self.show(show)
-      }
-      return
-    }
-    guard let helper = self.helper() else { return }
-    show(helper)
-  }
-
-  private static func helper() -> OSDUIHelperProtocol? {
-    let connection: NSXPCConnection
-    if let existingConnection = self.connection {
-      connection = existingConnection
-    } else {
-      connection = NSXPCConnection(machServiceName: "com.apple.OSDUIHelper", options: [])
-      connection.remoteObjectInterface = NSXPCInterface(with: OSDUIHelperProtocol.self)
-      connection.interruptionHandler = { [weak connection] in
-        os_log("Traditional OSD XPC connection interrupted", type: .error)
-        guard let connection = connection else { return }
-        DispatchQueue.main.async {
-          self.reset(connection)
-        }
-      }
-      connection.invalidationHandler = { [weak connection] in
-        guard let connection = connection else { return }
-        DispatchQueue.main.async {
-          if self.connection === connection {
-            self.connection = nil
-          }
-        }
-      }
-      self.connection = connection
-      connection.resume()
-    }
-    let proxy = connection.remoteObjectProxyWithErrorHandler { [weak connection] error in
-      os_log("Traditional OSD XPC proxy error: %{public}@", type: .error, error.localizedDescription)
-      guard let connection = connection else { return }
-      DispatchQueue.main.async {
-        self.reset(connection)
-      }
-    }
-    guard let helper = proxy as? OSDUIHelperProtocol else {
-      os_log("Unable to obtain Traditional OSD XPC proxy", type: .error)
-      self.reset(connection)
-      return nil
-    }
-    return helper
-  }
-
-  private static func reset(_ connection: NSXPCConnection) {
-    guard self.connection === connection else { return }
-    connection.interruptionHandler = nil
-    connection.invalidationHandler = nil
-    connection.invalidate()
-    self.connection = nil
   }
 }

@@ -1,0 +1,11 @@
+import Cocoa
+assert(ModernHUD.normalizedLevel(25, maximum: 100) == 0.25)
+assert(ModernHUD.normalizedLevel(-2, maximum: 1) == 0)
+assert(ModernHUD.normalizedLevel(2, maximum: 1) == 1)
+assert(ModernHUD.normalizedLevel(.nan, maximum: 1) == 0)
+assert(ModernHUD.normalizedLevel(1, maximum: 0) == 0)
+let screen = NSRect(x: -1920, y: 300, width: 1920, height: 1080)
+let frame = ModernHUD.frame(on: screen, visibleFrame: NSRect(x: -1920, y: 300, width: 1920, height: 1055))
+assert(screen.contains(frame))
+assert(frame.maxX == screen.maxX - 12)
+print("PASS: level normalization and secondary-screen placement")

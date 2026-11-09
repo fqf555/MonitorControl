@@ -80,7 +80,7 @@ _* With some limitations - full functionality available on macOS 11 Big Sur or n
 
 For macOS 27 Golden Gate compatibility [v4.4.0 or newer](https://github.com/MonitorControl/MonitorControl/releases) is required!
 
-Please note that current versions have limited native macOS OSD support on macOS Tahoe - although the Control Center brightness or volume OSD appears, the OSD percentage value will not show or update.
+This fork uses a compact top-right HUD on macOS 26 and newer for volume, mute, brightness, and contrast. It uses AppKit's glass effect view inside a transparent, rounded window and displays MonitorControl's actual level. This is an app-rendered HUD: Apple's Control Center OSD does not reliably reflect externally supplied monitor values. Older macOS versions retain the system OSD.
 
 ### Supported displays
 
