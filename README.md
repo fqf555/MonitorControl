@@ -1,3 +1,9 @@
+> **Unofficial fork — Qifeng's MonitorControl**
+>
+> This is an independently maintained fork of [MonitorControl](https://github.com/MonitorControl/MonitorControl), not an official release from the upstream project. Credit for the original app belongs to the MonitorControl maintainers and contributors. This fork adds a modern glass HUD and continuous keyboard adjustment, with its own releases and update feed.
+>
+> **[Download this fork](https://github.com/fqf555/MonitorControl/releases/latest)** · [Original project and official releases](https://github.com/MonitorControl/MonitorControl). The README below is adapted from upstream and retains links to its releases, documentation, and community.
+
 <img src=".github/Icon-cropped.png" width="200" alt="App icon" align="left"/>
 
 <div>
