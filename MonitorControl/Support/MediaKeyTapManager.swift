@@ -199,16 +199,9 @@ class MediaKeyTapManager: MediaKeyTapDelegate {
     if [KeyboardVolume.media.rawValue, KeyboardVolume.both.rawValue].contains(prefs.integer(forKey: PrefKey.keyboardVolume.rawValue)) {
       keys.append(contentsOf: [.mute, .volumeUp, .volumeDown])
     }
-    // Remove brightness keys if no external displays are connected, but only if brightness fine control is not active
-    var disengageBrightness = true
-    for display in DisplayManager.shared.getAllDisplays() where !display.isBuiltIn() {
-      disengageBrightness = false
-    }
-    // Disengage brightness keys on sleep so MacBook native screen can be controlled meanwhile
+    // Keep built-in-only setups on our adjustment and HUD path too.
+    // Temporarily return keys to macOS while our display handlers are unavailable.
     if app.sleepID != 0 || app.reconfigureID != 0 {
-      disengageBrightness = true
-    }
-    if disengageBrightness, !prefs.bool(forKey: PrefKey.useFineScaleBrightness.rawValue) {
       let keysToDelete: [MediaKey] = [.brightnessUp, .brightnessDown]
       keys.removeAll { keysToDelete.contains($0) }
     }
